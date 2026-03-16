@@ -1,0 +1,1 @@
+{ "name": "Ricardo&Carol", "short_name": "Compras", "start_url": "index.html", "display": "standalone", "background_color": "#ffffff", "theme_color": "#007aff", "icons": [ { "src": "icon.png", "sizes": "512x512", "type": "image/png" } ] }
