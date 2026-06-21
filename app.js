@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
-const APP_VERSION = "11.0.0";
+const APP_VERSION = "12.0.0";
 const PUSH_SERVICE_WORKER = "/firebase-messaging-sw.js";
 const ROOM_ID = "principal";
 const STORE = {
@@ -72,13 +72,22 @@ const priorities = {
   Alta: { label: "Urgente", icon: "🔥" }
 };
 
+const defaultNotificationPrefs = {
+  newShopping: true,
+  newTasks: true,
+  urgent: true,
+  reminders: true,
+  done: false
+};
+
 const defaultSettings = {
   darkMode: false,
   localNotifications: true,
   itemFilter: "Todas",
   taskFilter: "Todas",
   supermarketMode: false,
-  profileName: "Ricardo"
+  profileName: "Ricardo",
+  notificationPrefs: { ...defaultNotificationPrefs }
 };
 
 function hasValidVapidKey() {
@@ -99,6 +108,7 @@ let tasks = [];
 let logs = [];
 let unsubscribe = [];
 let settings = { ...defaultSettings, ...readJson(STORE.settings, {}) };
+settings.notificationPrefs = { ...defaultNotificationPrefs, ...(settings.notificationPrefs || {}) };
 
 const $ = selector => document.querySelector(selector);
 
@@ -148,6 +158,34 @@ function formatDate(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   if (Number.isNaN(date.getTime())) return "Agora";
   return date.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
+}
+
+function formatShortDateTime(value) {
+  if (!value) return "Sem lembrete";
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Sem lembrete";
+  return date.toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function dateTimeLocalValue(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function reminderQuickValue(option) {
+  const now = new Date();
+  if (option === "1h") now.setHours(now.getHours() + 1);
+  else if (option === "today18") now.setHours(18, 0, 0, 0);
+  else if (option === "tomorrow9") {
+    now.setDate(now.getDate() + 1);
+    now.setHours(9, 0, 0, 0);
+  } else if (option === "weekend10") {
+    const day = now.getDay();
+    const daysUntilSaturday = (6 - day + 7) % 7 || 7;
+    now.setDate(now.getDate() + daysUntilSaturday);
+    now.setHours(10, 0, 0, 0);
+  }
+  return dateTimeLocalValue(now);
 }
 
 function createdTime(entry) {
@@ -289,6 +327,40 @@ function showLocalNotification(title, body) {
   }
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImage(file) {
+  if (!file) return "";
+  if (!file.type.startsWith("image/")) {
+    toast("Escolhe uma imagem válida.");
+    return "";
+  }
+
+  const source = await fileToDataUrl(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = source;
+  });
+
+  const maxSide = 860;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.72);
+}
+
 async function testLocalNotification() {
   if (!("Notification" in window)) {
     toast("Este dispositivo não suporta notificações.");
@@ -390,20 +462,28 @@ async function addItem(event) {
     return;
   }
 
+  const photoFile = $("#itemPhoto")?.files?.[0];
+  const photoData = photoFile ? await compressImage(photoFile) : "";
+  const urgent = Boolean($("#itemUrgent")?.checked);
+
   const item = {
     name,
     qty: $("#itemQty").value.trim() || "1",
     category: $("#itemCategory").value,
     status: "pending",
+    urgent,
+    photoData,
     by: uid || "local",
     byName: settings.profileName || "Ricardo"
   };
 
   $("#itemName").value = "";
   $("#itemQty").value = "";
+  if ($("#itemPhoto")) $("#itemPhoto").value = "";
+  if ($("#itemUrgent")) $("#itemUrgent").checked = false;
   await writeEntry("compras", item, items);
-  await addLog(`Produto adicionado: ${name}`, "shop");
-  showLocalNotification("Novo produto", name);
+  await addLog(`${urgent ? "Produto urgente" : "Produto adicionado"}: ${name}`, "shop");
+  showLocalNotification(urgent ? "Compra urgente" : "Novo produto", name);
 }
 
 async function toggleItem(id) {
@@ -412,9 +492,19 @@ async function toggleItem(id) {
   const done = item.status !== "done";
   await patchEntry("compras", id, {
     status: done ? "done" : "pending",
-    doneAt: done ? new Date().toISOString() : null
+    doneAt: done ? new Date().toISOString() : null,
+    completedByName: done ? settings.profileName : null,
+    updatedByName: settings.profileName
   }, items);
   await addLog(`${done ? "Comprado" : "Reaberto"}: ${item.name}`, "shop");
+}
+
+async function toggleUrgentItem(id) {
+  const item = items.find(entry => entry.id === id);
+  if (!item) return;
+  const urgent = !item.urgent;
+  await patchEntry("compras", id, { urgent, updatedByName: settings.profileName }, items);
+  await addLog(`${urgent ? "Marcado urgente" : "Retirado urgente"}: ${item.name}`, "shop");
 }
 
 async function deleteItem(id) {
@@ -429,19 +519,25 @@ async function addTask(event) {
     return;
   }
 
+  const reminderValue = $("#taskReminder")?.value || "";
+  const priority = $("#taskPriority").value;
   const task = {
     title,
     due: $("#taskDue").value,
-    priority: $("#taskPriority").value,
+    priority,
     status: "pending",
+    reminderAt: reminderValue ? new Date(reminderValue).toISOString() : null,
+    reminderLabel: reminderValue ? formatShortDateTime(new Date(reminderValue)) : "Sem lembrete",
+    reminderSent: false,
     by: uid || "local",
     byName: settings.profileName || "Ricardo"
   };
 
   $("#taskTitle").value = "";
+  if ($("#taskReminder")) $("#taskReminder").value = "";
   await writeEntry("tarefas", task, tasks);
-  await addLog(`Tarefa criada: ${title}`, "task");
-  showLocalNotification("Nova tarefa", title);
+  await addLog(`${priority === "Alta" ? "Tarefa urgente" : "Tarefa criada"}: ${title}`, "task");
+  showLocalNotification(priority === "Alta" ? "Tarefa urgente" : "Nova tarefa", title);
 }
 
 async function toggleTask(id) {
@@ -450,9 +546,19 @@ async function toggleTask(id) {
   const done = task.status !== "done";
   await patchEntry("tarefas", id, {
     status: done ? "done" : "pending",
-    doneAt: done ? new Date().toISOString() : null
+    doneAt: done ? new Date().toISOString() : null,
+    completedByName: done ? settings.profileName : null,
+    updatedByName: settings.profileName
   }, tasks);
   await addLog(`${done ? "Tarefa concluída" : "Tarefa reaberta"}: ${task.title}`, "task");
+}
+
+async function toggleUrgentTask(id) {
+  const task = tasks.find(entry => entry.id === id);
+  if (!task) return;
+  const urgent = task.priority !== "Alta";
+  await patchEntry("tarefas", id, { priority: urgent ? "Alta" : "Normal", updatedByName: settings.profileName }, tasks);
+  await addLog(`${urgent ? "Tarefa marcada urgente" : "Tarefa voltou a normal"}: ${task.title}`, "task");
 }
 
 async function deleteTask(id) {
@@ -480,6 +586,7 @@ function setTaskFilter(value) {
 function setProfileName(value) {
   settings.profileName = value;
   saveSettings();
+  syncTokenPreferences();
   toast(`Dispositivo definido como ${value}.`);
   render();
 }
@@ -596,6 +703,7 @@ async function enableNotifications() {
       sw: PUSH_SERVICE_WORKER,
       appVersion: APP_VERSION,
       profileName: settings.profileName || "Ricardo",
+      notificationPrefs: settings.notificationPrefs || defaultNotificationPrefs,
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp()
     }, { merge: true });
@@ -616,11 +724,41 @@ async function enableNotifications() {
   render();
 }
 
+async function syncTokenPreferences() {
+  if (!db || !lastFcmToken) return;
+  try {
+    await setDoc(documentPath("tokens", lastFcmToken), {
+      token: lastFcmToken,
+      profileName: settings.profileName || "Ricardo",
+      notificationPrefs: settings.notificationPrefs || defaultNotificationPrefs,
+      appVersion: APP_VERSION,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.warn("Não consegui atualizar preferências do token.", error);
+  }
+}
+
+function toggleNotificationPref(pref) {
+  settings.notificationPrefs = { ...defaultNotificationPrefs, ...(settings.notificationPrefs || {}) };
+  settings.notificationPrefs[pref] = !settings.notificationPrefs[pref];
+  saveSettings();
+  syncTokenPreferences();
+  render();
+}
+
 function toggleSupermarketMode() {
   settings.supermarketMode = !settings.supermarketMode;
   saveSettings();
-  toast(settings.supermarketMode ? "Modo supermercado ativo." : "Modo normal ativo.");
+  toast(settings.supermarketMode ? "Chegaste ao supermercado. Modo rápido ativo." : "Modo normal ativo.");
   render();
+}
+
+function enterStoreMode() {
+  settings.supermarketMode = true;
+  saveSettings();
+  goTo("compras");
+  toast("Modo supermercado ativo.");
 }
 
 function toggleDarkMode() {
@@ -721,19 +859,27 @@ function visibleTasks() {
 function itemHtml(item, options = {}) {
   const category = categoryInfo(item.category);
   const isDone = item.status === "done";
-  const supermarketClass = options.supermarket ? " supermarket-card" : "";
+  const supermarketClass = options.supermarket ? " supermarket-card tap-to-check" : "";
+  const photo = item.photoData ? `<img class="product-photo" src="${item.photoData}" alt="Foto de ${escapeHtml(item.name)}">` : `<span class="photo-placeholder">${category.icon}</span>`;
+  const urgentChip = item.urgent ? `<span class="urgent-chip">🔥 Urgente</span>` : "";
+  const cardAction = options.supermarket ? `data-action="toggle-item" data-id="${item.id}"` : "";
   return `
-    <div class="list-item shopping-item${supermarketClass} ${isDone ? "done" : ""}">
+    <div class="list-item shopping-item${supermarketClass} ${item.urgent ? "is-urgent" : ""} ${isDone ? "done" : ""}" ${cardAction}>
       <button class="check-button" type="button" data-action="toggle-item" data-id="${item.id}" aria-label="Alternar produto">✓</button>
+      <div class="product-thumb">${photo}</div>
       <div class="item-main">
-        <div class="item-name"><span class="category-emoji">${category.icon}</span>${escapeHtml(item.name)}</div>
+        <div class="item-name"><span class="category-emoji">${category.icon}</span>${escapeHtml(item.name)} ${urgentChip}</div>
         <div class="item-meta rich-meta">
           <span class="qty-badge">Qtd: ${escapeHtml(item.qty || "1")}</span>
           <span class="category-chip">${category.icon} ${escapeHtml(category.name)}</span>
           <span class="by-chip">${byLine(item)}</span>
+          ${item.completedByName ? `<span class="done-chip">feito por ${escapeHtml(item.completedByName)}</span>` : ""}
         </div>
       </div>
-      <button class="icon-button" type="button" data-action="delete-item" data-id="${item.id}" aria-label="Apagar produto">×</button>
+      <div class="card-actions">
+        <button class="mini-button ${item.urgent ? "active" : ""}" type="button" data-action="toggle-urgent-item" data-id="${item.id}" aria-label="Marcar urgente">🔥</button>
+        <button class="icon-button" type="button" data-action="delete-item" data-id="${item.id}" aria-label="Apagar produto">×</button>
+      </div>
     </div>
   `;
 }
@@ -741,18 +887,62 @@ function itemHtml(item, options = {}) {
 function taskHtml(task) {
   const priorityKey = task.priority || "Normal";
   const priority = priorities[priorityKey] || priorities.Normal;
+  const reminderChip = task.reminderAt ? `<span class="reminder-chip">⏰ ${formatShortDateTime(task.reminderAt)}</span>` : "";
   return `
-    <div class="list-item task-item priority-${priorityKey.toLowerCase()} ${task.status === "done" ? "done" : ""}">
+    <div class="list-item task-item priority-${priorityKey.toLowerCase()} ${priorityKey === "Alta" ? "is-urgent" : ""} ${task.status === "done" ? "done" : ""}">
       <button class="check-button" type="button" data-action="toggle-task" data-id="${task.id}" aria-label="Alternar tarefa">✓</button>
       <div class="item-main">
-        <div class="item-name">${escapeHtml(task.title)}</div>
+        <div class="item-name">${escapeHtml(task.title)} ${priorityKey === "Alta" ? `<span class="urgent-chip">🔥 Urgente</span>` : ""}</div>
         <div class="item-meta rich-meta">
           <span class="priority-chip priority-${priorityKey.toLowerCase()}">${priority.icon} ${priority.label}</span>
           <span class="due-chip">📅 ${escapeHtml(task.due || "Sem data")}</span>
+          ${reminderChip}
           <span class="by-chip">${byLine(task)}</span>
+          ${task.completedByName ? `<span class="done-chip">feito por ${escapeHtml(task.completedByName)}</span>` : ""}
         </div>
       </div>
-      <button class="icon-button" type="button" data-action="delete-task" data-id="${task.id}" aria-label="Apagar tarefa">×</button>
+      <div class="card-actions">
+        <button class="mini-button ${priorityKey === "Alta" ? "active" : ""}" type="button" data-action="toggle-urgent-task" data-id="${task.id}" aria-label="Marcar urgente">🔥</button>
+        <button class="icon-button" type="button" data-action="delete-task" data-id="${task.id}" aria-label="Apagar tarefa">×</button>
+      </div>
+    </div>
+  `;
+}
+
+function nextReminderTask() {
+  const now = Date.now();
+  return pendingTasks()
+    .filter(task => task.reminderAt && new Date(task.reminderAt).getTime() >= now)
+    .sort((a, b) => new Date(a.reminderAt).getTime() - new Date(b.reminderAt).getTime())[0];
+}
+
+function categorySummary() {
+  const grouped = new Map();
+  pendingItems().forEach(item => {
+    const info = categoryInfo(item.category);
+    grouped.set(info.name, { ...info, count: (grouped.get(info.name)?.count || 0) + 1 });
+  });
+  return [...grouped.values()].sort((a, b) => b.count - a.count).slice(0, 4);
+}
+
+function mentalWidgetHtml() {
+  const urgentShopping = pendingItems().filter(item => item.urgent).length;
+  const urgentTasks = pendingTasks().filter(task => task.priority === "Alta").length;
+  const reminder = nextReminderTask();
+  const categories = categorySummary();
+  const lastBy = logs[0]?.text || "Nada novo por agora";
+  return `
+    <div class="panel span-12 mental-widget">
+      <div class="section-title">
+        <h2>🧠 Mental da casa</h2>
+        <button class="button primary" type="button" data-action="enter-store-mode">Cheguei ao supermercado</button>
+      </div>
+      <div class="mental-grid">
+        <div class="mental-card"><b>${urgentShopping + urgentTasks}</b><span>urgentes agora</span></div>
+        <div class="mental-card"><b>${reminder ? formatShortDateTime(reminder.reminderAt) : "Livre"}</b><span>${reminder ? escapeHtml(reminder.title) : "sem lembretes"}</span></div>
+        <div class="mental-card"><b>${categories.map(cat => `${cat.icon} ${cat.count}`).join(" · ") || "🛒 0"}</b><span>categorias em falta</span></div>
+        <div class="mental-card"><b>Último</b><span>${escapeHtml(lastBy)}</span></div>
+      </div>
     </div>
   `;
 }
@@ -776,6 +966,7 @@ function renderDashboard() {
       </div>
     </div>
     <div class="grid">
+      ${mentalWidgetHtml()}
       <div class="panel span-4 kpi"><div><b>${pItems.length}</b><span>Compras pendentes</span></div><span class="pill">🛒 Lista</span></div>
       <div class="panel span-4 kpi"><div><b>${pTasks.length}</b><span>Tarefas abertas</span></div><span class="pill accent">${urgentTasks} urgentes</span></div>
       <div class="panel span-4 kpi"><div><b>${logs.length}</b><span>Atividades</span></div><span class="pill">${navigator.onLine ? "Online" : "Offline"}</span></div>
@@ -799,28 +990,39 @@ function renderDashboard() {
 function renderShopping() {
   const pending = pendingItems();
   const done = doneItems();
+  const total = pending.length + done.length;
+  const progress = total ? Math.round((done.length / total) * 100) : 0;
   const categories = ["Todas", ...shoppingCategories.map(item => item.name)];
-  const modeLabel = settings.supermarketMode ? "Modo normal" : "Modo supermercado";
+  const modeLabel = settings.supermarketMode ? "Sair do supermercado" : "Cheguei ao supermercado";
 
   $("#compras").innerHTML = `
     <div class="panel shopping-panel ${settings.supermarketMode ? "is-supermarket" : ""}">
       <div class="section-title">
-        <h2>${settings.supermarketMode ? "Modo supermercado" : "Adicionar produto"}</h2>
+        <h2>${settings.supermarketMode ? "🛒 Cheguei ao supermercado" : "Adicionar produto"}</h2>
         <span class="pill">${pending.length} por comprar</span>
       </div>
-      <form class="form" id="itemForm">
-        <input class="input" id="itemName" placeholder="Produto" autocomplete="off">
-        <input class="input" id="itemQty" placeholder="Qtd" autocomplete="off">
-        <select id="itemCategory">${shoppingCategories.map(cat => optionHtml(cat.name)).join("")}</select>
-        <button class="button primary" type="submit">Adicionar</button>
-      </form>
+      ${settings.supermarketMode ? `
+        <div class="store-mode-hero">
+          <div><b>${progress}% tratado</b><span>Toca no produto para marcar como comprado.</span></div>
+          <button class="button secondary" type="button" data-action="toggle-supermarket-mode">Sair</button>
+        </div>
+      ` : `
+        <form class="form shopping-form" id="itemForm">
+          <input class="input" id="itemName" placeholder="Produto" autocomplete="off">
+          <input class="input" id="itemQty" placeholder="Qtd" autocomplete="off">
+          <select id="itemCategory">${shoppingCategories.map(cat => optionHtml(cat.name)).join("")}</select>
+          <button class="button primary" type="submit">Adicionar</button>
+          <label class="file-picker">📷 Foto<input id="itemPhoto" type="file" accept="image/*" capture="environment"></label>
+          <label class="check-label"><input id="itemUrgent" type="checkbox"> 🔥 Urgente</label>
+        </form>
+      `}
       <div class="toolbar shopping-toolbar">
         <select data-setting="itemFilter" aria-label="Filtrar compras">${categories.map(value => optionHtml(value, settings.itemFilter)).join("")}</select>
         <button class="button secondary supermarket-toggle ${settings.supermarketMode ? "active" : ""}" type="button" data-action="toggle-supermarket-mode">🛒 ${modeLabel}</button>
         <button class="button secondary" type="button" data-action="clear-done">Limpar concluídos</button>
       </div>
       <div class="category-strip">${shoppingCategories.map(cat => `<button class="category-pill ${settings.itemFilter === cat.name ? "active" : ""}" type="button" data-filter-category="${escapeHtml(cat.name)}">${cat.icon}<span>${escapeHtml(cat.name)}</span></button>`).join("")}</div>
-      <div class="list ${settings.supermarketMode ? "supermarket-list" : ""}">${visibleItems().map(item => itemHtml(item, { supermarket: settings.supermarketMode })).join("") || empty("Lista limpa", "Adiciona o primeiro produto para a próxima ida ao supermercado.", "🛒")}</div>
+      <div class="list ${settings.supermarketMode ? "supermarket-list" : ""}">${visibleItems().map(item => itemHtml(item, { supermarket: settings.supermarketMode })).join("") || empty(settings.supermarketMode ? "Tudo comprado" : "Lista limpa", settings.supermarketMode ? "A lista de supermercado está limpa por agora." : "Adiciona o primeiro produto para a próxima ida ao supermercado.", "🛒")}</div>
     </div>
     ${settings.supermarketMode ? "" : `
       <div class="panel">
@@ -830,7 +1032,7 @@ function renderShopping() {
     `}
   `;
 
-  $("#itemForm").addEventListener("submit", addItem);
+  $("#itemForm")?.addEventListener("submit", addItem);
 }
 
 function renderTasks() {
@@ -841,12 +1043,19 @@ function renderTasks() {
   $("#tarefas").innerHTML = `
     <div class="panel">
       <div class="section-title"><h2>Adicionar tarefa</h2><span class="pill">${pending.length} abertas</span></div>
-      <form class="form tasks" id="taskForm">
+      <form class="form tasks task-form" id="taskForm">
         <input class="input" id="taskTitle" placeholder="Tarefa" autocomplete="off">
         <select id="taskDue">${["Hoje", "Amanhã", "Esta semana", "Sem data"].map(optionHtml).join("")}</select>
         <select id="taskPriority">${["Normal", "Alta", "Baixa"].map(optionHtml).join("")}</select>
+        <input class="input" id="taskReminder" type="datetime-local" aria-label="Lembrete">
         <button class="button primary" type="submit">Adicionar</button>
       </form>
+      <div class="quick-reminders">
+        <button class="chip-button" type="button" data-reminder="1h">⏰ 1h</button>
+        <button class="chip-button" type="button" data-reminder="today18">Hoje 18h</button>
+        <button class="chip-button" type="button" data-reminder="tomorrow9">Amanhã 9h</button>
+        <button class="chip-button" type="button" data-reminder="weekend10">Sábado 10h</button>
+      </div>
       <div class="toolbar">
         <select data-setting="taskFilter" aria-label="Filtrar tarefas">${filters.map(value => optionHtml(value, settings.taskFilter)).join("")}</select>
         <button class="button secondary" type="button" data-action="clear-done">Limpar concluídos</button>
@@ -856,6 +1065,7 @@ function renderTasks() {
         <span class="priority-chip priority-baixa">🌙 Baixa</span>
         <span class="priority-chip priority-normal">✨ Normal</span>
         <span class="priority-chip priority-alta">🔥 Urgente</span>
+        <span class="reminder-chip">⏰ Lembrete por data/hora</span>
       </div>
       <div class="list">${visibleTasks().map(taskHtml).join("") || empty("Tudo tratado", "Sem tarefas pendentes por agora.", "✅")}</div>
     </div>
@@ -873,6 +1083,14 @@ function renderNotifications() {
   const pushReady = hasValidVapidKey();
   const standalone = isStandaloneApp() ? "Sim" : "Não";
   const tokenText = shortToken(lastFcmToken);
+  const prefs = { ...defaultNotificationPrefs, ...(settings.notificationPrefs || {}) };
+  const prefRows = [
+    ["newShopping", "🛒 Novas compras", "Quando alguém adiciona produto."],
+    ["newTasks", "✅ Novas tarefas", "Quando alguém cria uma tarefa."],
+    ["urgent", "🔥 Urgentes", "Avisos com prioridade alta."],
+    ["reminders", "⏰ Lembretes", "Tarefas com data e hora."],
+    ["done", "🏁 Concluídos", "Quando algo é marcado como feito."]
+  ];
 
   $("#notificacoes").innerHTML = `
     <div class="panel">
@@ -882,12 +1100,20 @@ function renderNotifications() {
         <button class="toggle ${settings.localNotifications ? "on" : ""}" type="button" data-action="toggle-local-notifications" aria-label="Alternar notificações locais"></button>
       </div>
       <div class="settings-row">
-        <div><b>Firebase Push</b><small>${pushReady ? "VAPID configurada. Service Worker: firebase-messaging-sw.js." : "A aguardar VAPID_KEY do Firebase."}</small></div>
+        <div><b>Firebase Push</b><small>${pushReady ? "VAPID configurada. Push automático ativo para compras, tarefas, urgentes e lembretes." : "A aguardar VAPID_KEY do Firebase."}</small></div>
         <button class="button secondary" type="button" data-action="test-notification">Testar local</button>
       </div>
       <div class="settings-row">
         <div><b>Token FCM</b><small>${tokenText}</small></div>
         <button class="button secondary" type="button" data-action="copy-token">Copiar token</button>
+      </div>
+      <div class="notification-prefs">
+        ${prefRows.map(([key, title, text]) => `
+          <div class="settings-row compact">
+            <div><b>${title}</b><small>${text}</small></div>
+            <button class="toggle ${prefs[key] ? "on" : ""}" type="button" data-action="toggle-notification-pref" data-pref="${key}" aria-label="Alternar ${title}"></button>
+          </div>
+        `).join("")}
       </div>
       <p class="note">Instalada como app: <b>${standalone}</b> · Utilizador: <b>${escapeHtml(settings.profileName)}</b> · Versão: <b>${APP_VERSION}</b><br>No iPhone, abre sempre pelo ícone. As próximas atualizações entram automaticamente, sem voltar ao Safari.</p>
     </div>
@@ -975,6 +1201,13 @@ function handleClick(event) {
     return;
   }
 
+  const reminderButton = event.target.closest("[data-reminder]");
+  if (reminderButton) {
+    const input = $("#taskReminder");
+    if (input) input.value = reminderQuickValue(reminderButton.dataset.reminder);
+    return;
+  }
+
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
 
@@ -987,6 +1220,7 @@ function handleClick(event) {
     "enable-notifications": enableNotifications,
     "toggle-local-notifications": toggleLocalNotifications,
     "toggle-supermarket-mode": toggleSupermarketMode,
+    "enter-store-mode": enterStoreMode,
     "test-notification": testLocalNotification,
     "copy-token": copyFcmToken,
     "force-update": forceAppUpdate,
@@ -994,8 +1228,11 @@ function handleClick(event) {
     "clear-local": clearLocalData,
     "toggle-item": () => toggleItem(id),
     "delete-item": () => deleteItem(id),
+    "toggle-urgent-item": () => toggleUrgentItem(id),
     "toggle-task": () => toggleTask(id),
-    "delete-task": () => deleteTask(id)
+    "toggle-urgent-task": () => toggleUrgentTask(id),
+    "delete-task": () => deleteTask(id),
+    "toggle-notification-pref": () => toggleNotificationPref(actionButton.dataset.pref)
   };
 
   actions[action]?.();

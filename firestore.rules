@@ -10,22 +10,35 @@ service cloud.firestore {
       return !(request.resource.data.keys().hasAny([field])) || request.resource.data[field] is string || request.resource.data[field] == null;
     }
 
+    function optionalBool(field) {
+      return !(request.resource.data.keys().hasAny([field])) || request.resource.data[field] is bool || request.resource.data[field] == null;
+    }
+
+    function optionalMap(field) {
+      return !(request.resource.data.keys().hasAny([field])) || request.resource.data[field] is map || request.resource.data[field] == null;
+    }
+
     function validCompra() {
       return request.resource.data.keys().hasOnly([
-        'name', 'qty', 'category', 'status', 'by', 'byName', 'createdAt', 'doneAt'
+        'name', 'qty', 'category', 'status', 'urgent', 'photoData', 'by', 'byName', 'createdAt', 'doneAt', 'completedByName', 'updatedByName'
       ])
       && request.resource.data.name is string
       && request.resource.data.qty is string
       && request.resource.data.category is string
       && request.resource.data.status in ['pending', 'done']
+      && optionalBool('urgent')
+      && optionalString('photoData')
       && optionalString('by')
       && optionalString('byName')
-      && optionalString('doneAt');
+      && optionalString('doneAt')
+      && optionalString('completedByName')
+      && optionalString('updatedByName');
     }
 
     function validTarefa() {
       return request.resource.data.keys().hasOnly([
-        'title', 'due', 'priority', 'status', 'by', 'byName', 'createdAt', 'doneAt'
+        'title', 'due', 'priority', 'status', 'by', 'byName', 'createdAt', 'doneAt', 'completedByName',
+        'reminderAt', 'reminderLabel', 'reminderSent', 'reminderSentAt', 'updatedByName'
       ])
       && request.resource.data.title is string
       && request.resource.data.due is string
@@ -33,7 +46,12 @@ service cloud.firestore {
       && request.resource.data.status in ['pending', 'done']
       && optionalString('by')
       && optionalString('byName')
-      && optionalString('doneAt');
+      && optionalString('doneAt')
+      && optionalString('completedByName')
+      && optionalString('reminderAt')
+      && optionalString('reminderLabel')
+      && optionalBool('reminderSent')
+      && optionalString('updatedByName');
     }
 
     match /casal/principal/compras/{itemId} {
@@ -59,11 +77,12 @@ service cloud.firestore {
       allow read, delete: if signedIn();
       allow create, update: if signedIn()
         && request.resource.data.keys().hasOnly([
-          'token', 'uid', 'profileName', 'userAgent', 'standalone', 'sw', 'appVersion', 'createdAt', 'updatedAt'
+          'token', 'uid', 'profileName', 'notificationPrefs', 'userAgent', 'standalone', 'sw', 'appVersion', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.token is string
         && optionalString('uid')
-        && optionalString('profileName');
+        && optionalString('profileName')
+        && optionalMap('notificationPrefs');
     }
   }
 }
