@@ -1,7 +1,7 @@
 {
   "id": "ricardo-carol-app",
   "name": "Ricardo & Carol",
-  "short_name": "R&C",
+  "short_name": "Ricardo & Carol",
   "description": "Lista partilhada de compras e tarefas para Ricardo & Carol.",
   "start_url": "./index.html",
   "scope": "./",

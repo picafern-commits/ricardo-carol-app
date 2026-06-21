@@ -6,24 +6,34 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function optionalString(field) {
+      return !(request.resource.data.keys().hasAny([field])) || request.resource.data[field] is string || request.resource.data[field] == null;
+    }
+
     function validCompra() {
       return request.resource.data.keys().hasOnly([
-        'name', 'qty', 'category', 'status', 'by', 'createdAt', 'doneAt'
+        'name', 'qty', 'category', 'status', 'by', 'byName', 'createdAt', 'doneAt'
       ])
       && request.resource.data.name is string
       && request.resource.data.qty is string
       && request.resource.data.category is string
-      && request.resource.data.status in ['pending', 'done'];
+      && request.resource.data.status in ['pending', 'done']
+      && optionalString('by')
+      && optionalString('byName')
+      && optionalString('doneAt');
     }
 
     function validTarefa() {
       return request.resource.data.keys().hasOnly([
-        'title', 'due', 'priority', 'status', 'by', 'createdAt', 'doneAt'
+        'title', 'due', 'priority', 'status', 'by', 'byName', 'createdAt', 'doneAt'
       ])
       && request.resource.data.title is string
       && request.resource.data.due is string
       && request.resource.data.priority in ['Baixa', 'Normal', 'Alta']
-      && request.resource.data.status in ['pending', 'done'];
+      && request.resource.data.status in ['pending', 'done']
+      && optionalString('by')
+      && optionalString('byName')
+      && optionalString('doneAt');
     }
 
     match /casal/principal/compras/{itemId} {
@@ -46,7 +56,14 @@ service cloud.firestore {
     }
 
     match /casal/principal/tokens/{tokenId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'token', 'uid', 'profileName', 'userAgent', 'standalone', 'sw', 'appVersion', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.token is string
+        && optionalString('uid')
+        && optionalString('profileName');
     }
   }
 }
