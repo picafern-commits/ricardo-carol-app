@@ -1,134 +1,143 @@
-const CACHE_NAME = "ricardo-carol-pwa-v7";
-const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/styles.css?v=6",
-  "/app.js?v=6",
-  "/manifest.json?v=6",
-  "/assets/icon-192.png",
-  "/assets/icon-512.png",
-  "/assets/apple-touch-icon.png"
-];
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { logger } = require("firebase-functions");
+const admin = require("firebase-admin");
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCqOp8DRQQI4JZSzOnX_4yl3TrhxT4m6S0",
-  authDomain: "ricardo-carol-app.firebaseapp.com",
-  projectId: "ricardo-carol-app",
-  storageBucket: "ricardo-carol-app.firebasestorage.app",
-  messagingSenderId: "559158840335",
-  appId: "1:559158840335:web:304ee3a5cd570912aca77a",
-  measurementId: "G-PF1RSC4F1N"
-};
+admin.initializeApp();
 
-let firebaseMessagingReady = false;
+const db = admin.firestore();
+const messaging = admin.messaging();
 
-try {
-  importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-  importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
-
-  firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
-  firebaseMessagingReady = true;
-
-  messaging.onBackgroundMessage(payload => {
-    const notification = payload.notification || {};
-    showRicardoCarolNotification({
-      title: notification.title || "Ricardo & Carol",
-      body: notification.body || "Nova atualização na app.",
-      data: payload.data || {}
-    });
-  });
-} catch (error) {
-  console.warn("Firebase Messaging SW não carregou. Fallback Web Push ativo.", error);
+function cleanText(value, fallback = "") {
+  return String(value || fallback).trim().slice(0, 120);
 }
 
-function showRicardoCarolNotification({ title, body, data } = {}) {
-  return self.registration.showNotification(title || "Ricardo & Carol", {
-    body: body || "Nova atualização na app.",
-    icon: "/assets/icon-192.png",
-    badge: "/assets/icon-192.png",
-    data: {
-      url: "/#notificacoes",
-      ...(data || {})
-    }
+async function sendPushToOtherPerson({ roomId, senderUid, senderName, title, body, url }) {
+  const tokensSnap = await db.collection("casal").doc(roomId).collection("tokens").get();
+
+  const targets = [];
+  const tokenDocIds = [];
+
+  tokensSnap.forEach(doc => {
+    const data = doc.data() || {};
+    const token = data.token;
+    if (!token || typeof token !== "string") return;
+
+    const sameUid = senderUid && data.uid === senderUid;
+    const samePerson = senderName && data.profileName === senderName;
+
+    if (sameUid || samePerson) return;
+
+    targets.push(token);
+    tokenDocIds.push(doc.id);
   });
-}
 
-self.addEventListener("push", event => {
-  if (firebaseMessagingReady) return;
-
-  let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = { body: event.data ? event.data.text() : "Nova atualização na app." };
-  }
-
-  const notification = payload.notification || payload.webpush?.notification || payload;
-  event.waitUntil(showRicardoCarolNotification({
-    title: notification.title || payload.title,
-    body: notification.body || payload.body,
-    data: payload.data || {}
-  }));
-});
-
-self.addEventListener("notificationclick", event => {
-  event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if ("focus" in client) {
-          client.navigate(targetUrl);
-          return client.focus();
-        }
-      }
-      return clients.openWindow(targetUrl);
-    })
-  );
-});
-
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .catch(error => console.warn("Cache inicial não criado.", error))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", event => {
-  const { request } = event;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/index.html")));
+  if (!targets.length) {
+    logger.info("Sem tokens de destino para notificar.", { roomId, senderUid, senderName });
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      return response;
-    }).catch(() => cached))
-  );
-});
-
-self.addEventListener("message", event => {
-  if (event.data?.type === "SKIP_WAITING") {
-    self.skipWaiting();
+  const batches = [];
+  for (let i = 0; i < targets.length; i += 500) {
+    batches.push({
+      tokens: targets.slice(i, i + 500),
+      ids: tokenDocIds.slice(i, i + 500)
+    });
   }
-});
+
+  for (const batch of batches) {
+    const response = await messaging.sendEachForMulticast({
+      tokens: batch.tokens,
+      notification: {
+        title,
+        body
+      },
+      data: {
+        url,
+        roomId,
+        senderName: senderName || "",
+        createdAt: new Date().toISOString()
+      },
+      webpush: {
+        fcmOptions: {
+          link: url
+        },
+        notification: {
+          icon: "/assets/icon-192.png",
+          badge: "/assets/icon-192.png",
+          requireInteraction: false
+        }
+      }
+    });
+
+    const deletions = [];
+    response.responses.forEach((result, index) => {
+      if (result.success) return;
+      const code = result.error && result.error.code;
+      logger.warn("Falha ao enviar push.", { code, tokenDocId: batch.ids[index] });
+      if (
+        code === "messaging/registration-token-not-registered" ||
+        code === "messaging/invalid-registration-token" ||
+        code === "messaging/invalid-argument"
+      ) {
+        deletions.push(
+          db.collection("casal").doc(roomId).collection("tokens").doc(batch.ids[index]).delete()
+        );
+      }
+    });
+
+    await Promise.allSettled(deletions);
+    logger.info("Push automático processado.", {
+      roomId,
+      successCount: response.successCount,
+      failureCount: response.failureCount
+    });
+  }
+}
+
+exports.notifyNewShoppingItem = onDocumentCreated(
+  {
+    document: "casal/{roomId}/compras/{itemId}",
+    region: "europe-west1"
+  },
+  async event => {
+    const item = event.data && event.data.data();
+    if (!item) return;
+
+    const senderName = cleanText(item.byName, "Alguém");
+    const product = cleanText(item.name, "Novo produto");
+    const qty = cleanText(item.qty, "1");
+
+    await sendPushToOtherPerson({
+      roomId: event.params.roomId,
+      senderUid: item.by,
+      senderName: item.byName,
+      title: "Nova compra adicionada",
+      body: `${senderName} adicionou: ${product}${qty ? ` · ${qty}` : ""}`,
+      url: "/#compras"
+    });
+  }
+);
+
+exports.notifyNewTask = onDocumentCreated(
+  {
+    document: "casal/{roomId}/tarefas/{taskId}",
+    region: "europe-west1"
+  },
+  async event => {
+    const task = event.data && event.data.data();
+    if (!task) return;
+
+    const senderName = cleanText(task.byName, "Alguém");
+    const title = cleanText(task.title, "Nova tarefa");
+    const priority = cleanText(task.priority, "Normal");
+
+    await sendPushToOtherPerson({
+      roomId: event.params.roomId,
+      senderUid: task.by,
+      senderName: task.byName,
+      title: "Nova tarefa criada",
+      body: `${senderName} criou: ${title} · ${priority}`,
+      url: "/#tarefas"
+    });
+  }
+);

@@ -1,26 +1,17 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
+  "name": "ricardo-carol-functions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Functions para notificações automáticas da app Ricardo & Carol.",
+  "engines": {
+    "node": "22"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default"
-    }
-  ],
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "firestore.rules",
-      "README.md",
-      "functions/**",
-      "**/.*",
-      "**/node_modules/**",
-      "**/*.zip"
-    ],
-    "rewrites": [
-      { "source": "**", "destination": "/index.html" }
-    ]
+  "main": "index.js",
+  "scripts": {
+    "lint": "node --check index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1"
   }
 }
