@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
-const APP_VERSION = "10.0.0";
+const APP_VERSION = "11.0.0";
 const PUSH_SERVICE_WORKER = "/firebase-messaging-sw.js";
 const ROOM_ID = "principal";
 const STORE = {
@@ -47,18 +47,37 @@ const STORE = {
 };
 
 const tabs = [
-  { id: "dashboard", icon: "⌂", label: "Dashboard", sub: "Resumo das compras, tarefas e atividade." },
-  { id: "compras", icon: "□", label: "Compras", sub: "Lista partilhada em tempo real." },
-  { id: "tarefas", icon: "✓", label: "Tarefas", sub: "Tarefas abertas, prioridades e concluídas." },
-  { id: "notificacoes", icon: "!", label: "Notificações", sub: "Alertas locais e base para push." },
-  { id: "configuracoes", icon: "⚙", label: "Configurações", sub: "Tema, dados locais e sincronização." }
+  { id: "dashboard", icon: "🏠", label: "Hoje", sub: "Resumo bonito das compras, tarefas e atividade." },
+  { id: "compras", icon: "🛒", label: "Compras", sub: "Lista de supermercado partilhada em tempo real." },
+  { id: "tarefas", icon: "✅", label: "Tarefas", sub: "Tarefas abertas com prioridade visual." },
+  { id: "notificacoes", icon: "🔔", label: "Avisos", sub: "Notificações e histórico da casa." },
+  { id: "configuracoes", icon: "⚙️", label: "Mais", sub: "Tema, perfil, atualizações e sincronização." }
 ];
+
+const shoppingCategories = [
+  { name: "Supermercado", icon: "🛒" },
+  { name: "Frescos", icon: "🥦" },
+  { name: "Laticínios", icon: "🥛" },
+  { name: "Carne/Peixe", icon: "🥩" },
+  { name: "Limpeza", icon: "🧼" },
+  { name: "Casa", icon: "🏠" },
+  { name: "Farmácia", icon: "💊" },
+  { name: "Animais", icon: "🐾" },
+  { name: "Outros", icon: "⭐" }
+];
+
+const priorities = {
+  Baixa: { label: "Baixa", icon: "🌙" },
+  Normal: { label: "Normal", icon: "✨" },
+  Alta: { label: "Urgente", icon: "🔥" }
+};
 
 const defaultSettings = {
   darkMode: false,
   localNotifications: true,
   itemFilter: "Todas",
   taskFilter: "Todas",
+  supermarketMode: false,
   profileName: "Ricardo"
 };
 
@@ -597,6 +616,13 @@ async function enableNotifications() {
   render();
 }
 
+function toggleSupermarketMode() {
+  settings.supermarketMode = !settings.supermarketMode;
+  saveSettings();
+  toast(settings.supermarketMode ? "Modo supermercado ativo." : "Modo normal ativo.");
+  render();
+}
+
 function toggleDarkMode() {
   settings.darkMode = !settings.darkMode;
   document.documentElement.dataset.theme = settings.darkMode ? "dark" : "";
@@ -649,25 +675,63 @@ function quickAdd() {
   window.setTimeout(() => $("#itemName")?.focus(), 80);
 }
 
+function categoryInfo(category = "Outros") {
+  return shoppingCategories.find(item => item.name === category) || shoppingCategories.at(-1);
+}
+
+function profileAvatar(name = "Ricardo") {
+  const clean = String(name || "?").trim();
+  const initial = clean.slice(0, 1).toUpperCase() || "?";
+  const cssName = clean.toLowerCase().includes("carol") ? "carol" : "ricardo";
+  return `<span class="avatar ${cssName}" title="${escapeHtml(clean)}">${escapeHtml(initial)}</span>`;
+}
+
+function byLine(entry) {
+  return `${profileAvatar(entry.byName)}<span>${escapeHtml(entry.byName || "Ricardo")}</span>`;
+}
+
+function doneItems() {
+  return sortByCreated(items.filter(item => item.status === "done"));
+}
+
+function pendingItems() {
+  return sortByCreated(items.filter(item => item.status !== "done"));
+}
+
+function pendingTasks() {
+  return sortByCreated(tasks.filter(task => task.status !== "done"));
+}
+
+function doneTasks() {
+  return sortByCreated(tasks.filter(task => task.status === "done"));
+}
+
 function visibleItems() {
-  const pending = items.filter(item => item.status !== "done");
+  const pending = pendingItems();
   if (settings.itemFilter === "Todas") return pending;
   return pending.filter(item => (item.category || "Outros") === settings.itemFilter);
 }
 
 function visibleTasks() {
-  const pending = tasks.filter(task => task.status !== "done");
+  const pending = pendingTasks();
   if (settings.taskFilter === "Todas") return pending;
   return pending.filter(task => task.priority === settings.taskFilter || task.due === settings.taskFilter);
 }
 
-function itemHtml(item) {
+function itemHtml(item, options = {}) {
+  const category = categoryInfo(item.category);
+  const isDone = item.status === "done";
+  const supermarketClass = options.supermarket ? " supermarket-card" : "";
   return `
-    <div class="list-item ${item.status === "done" ? "done" : ""}">
+    <div class="list-item shopping-item${supermarketClass} ${isDone ? "done" : ""}">
       <button class="check-button" type="button" data-action="toggle-item" data-id="${item.id}" aria-label="Alternar produto">✓</button>
-      <div>
-        <div class="item-name">${escapeHtml(item.name)}</div>
-        <div class="item-meta">${escapeHtml(item.qty || "1")} · ${escapeHtml(item.category || "Geral")}</div>
+      <div class="item-main">
+        <div class="item-name"><span class="category-emoji">${category.icon}</span>${escapeHtml(item.name)}</div>
+        <div class="item-meta rich-meta">
+          <span class="qty-badge">Qtd: ${escapeHtml(item.qty || "1")}</span>
+          <span class="category-chip">${category.icon} ${escapeHtml(category.name)}</span>
+          <span class="by-chip">${byLine(item)}</span>
+        </div>
       </div>
       <button class="icon-button" type="button" data-action="delete-item" data-id="${item.id}" aria-label="Apagar produto">×</button>
     </div>
@@ -675,14 +739,18 @@ function itemHtml(item) {
 }
 
 function taskHtml(task) {
-  const priority = task.priority || "Normal";
-  const extra = priority === "Alta" ? " · prioridade alta" : "";
+  const priorityKey = task.priority || "Normal";
+  const priority = priorities[priorityKey] || priorities.Normal;
   return `
-    <div class="list-item ${task.status === "done" ? "done" : ""}">
+    <div class="list-item task-item priority-${priorityKey.toLowerCase()} ${task.status === "done" ? "done" : ""}">
       <button class="check-button" type="button" data-action="toggle-task" data-id="${task.id}" aria-label="Alternar tarefa">✓</button>
-      <div>
+      <div class="item-main">
         <div class="item-name">${escapeHtml(task.title)}</div>
-        <div class="item-meta">${escapeHtml(task.due || "Hoje")} · ${escapeHtml(priority)}${extra}</div>
+        <div class="item-meta rich-meta">
+          <span class="priority-chip priority-${priorityKey.toLowerCase()}">${priority.icon} ${priority.label}</span>
+          <span class="due-chip">📅 ${escapeHtml(task.due || "Sem data")}</span>
+          <span class="by-chip">${byLine(task)}</span>
+        </div>
       </div>
       <button class="icon-button" type="button" data-action="delete-task" data-id="${task.id}" aria-label="Apagar tarefa">×</button>
     </div>
@@ -690,60 +758,84 @@ function taskHtml(task) {
 }
 
 function renderDashboard() {
-  const pendingItems = items.filter(item => item.status !== "done");
-  const pendingTasks = tasks.filter(task => task.status !== "done");
-  const urgentTasks = pendingTasks.filter(task => task.priority === "Alta").length;
+  const pItems = pendingItems();
+  const pTasks = pendingTasks();
+  const urgentTasks = pTasks.filter(task => task.priority === "Alta").length;
+  const lastLog = logs[0];
 
   $("#dashboard").innerHTML = `
+    <div class="hero-card panel span-12">
+      <div>
+        <p class="eyebrow">Casa organizada</p>
+        <h2>Olá, ${escapeHtml(settings.profileName)} ✨</h2>
+        <p>Hoje têm <b>${pItems.length}</b> compras por fazer e <b>${pTasks.length}</b> tarefas abertas.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="button primary" type="button" data-go="compras">Ir às compras</button>
+        <button class="button secondary" type="button" data-go="tarefas">Ver tarefas</button>
+      </div>
+    </div>
     <div class="grid">
-      <div class="panel span-4 kpi"><div><b>${pendingItems.length}</b><span>Compras pendentes</span></div><span class="pill">Lista</span></div>
-      <div class="panel span-4 kpi"><div><b>${pendingTasks.length}</b><span>Tarefas abertas</span></div><span class="pill accent">${urgentTasks} altas</span></div>
+      <div class="panel span-4 kpi"><div><b>${pItems.length}</b><span>Compras pendentes</span></div><span class="pill">🛒 Lista</span></div>
+      <div class="panel span-4 kpi"><div><b>${pTasks.length}</b><span>Tarefas abertas</span></div><span class="pill accent">${urgentTasks} urgentes</span></div>
       <div class="panel span-4 kpi"><div><b>${logs.length}</b><span>Atividades</span></div><span class="pill">${navigator.onLine ? "Online" : "Offline"}</span></div>
       <div class="panel span-6">
         <div class="section-title"><h2>Próximas compras</h2><button class="button secondary" type="button" data-go="compras">Abrir</button></div>
-        <div class="list">${pendingItems.slice(0, 5).map(itemHtml).join("") || empty("Sem compras pendentes.")}</div>
+        <div class="list">${pItems.slice(0, 5).map(item => itemHtml(item)).join("") || empty("Lista limpa", "Adiciona o primeiro produto para a próxima ida ao supermercado.", "🛒")}</div>
       </div>
       <div class="panel span-6">
         <div class="section-title"><h2>Próximas tarefas</h2><button class="button secondary" type="button" data-go="tarefas">Abrir</button></div>
-        <div class="list">${pendingTasks.slice(0, 5).map(taskHtml).join("") || empty("Sem tarefas pendentes.")}</div>
+        <div class="list">${pTasks.slice(0, 5).map(taskHtml).join("") || empty("Tudo tratado", "Sem tarefas pendentes por agora.", "✅")}</div>
+      </div>
+      <div class="panel span-12 activity-strip">
+        <span class="pill">Última atividade</span>
+        <strong>${lastLog ? escapeHtml(lastLog.text) : "Ainda sem atividade."}</strong>
+        <small>${lastLog ? formatDate(lastLog.createdAt) : "Quando adicionarem algo, aparece aqui."}</small>
       </div>
     </div>
   `;
 }
 
 function renderShopping() {
-  const pending = items.filter(item => item.status !== "done");
-  const done = items.filter(item => item.status === "done");
-  const categories = ["Todas", "Supermercado", "Casa", "Farmácia", "Animais", "Outros"];
+  const pending = pendingItems();
+  const done = doneItems();
+  const categories = ["Todas", ...shoppingCategories.map(item => item.name)];
+  const modeLabel = settings.supermarketMode ? "Modo normal" : "Modo supermercado";
 
   $("#compras").innerHTML = `
-    <div class="panel">
-      <div class="section-title"><h2>Adicionar produto</h2><span class="pill">${pending.length} por comprar</span></div>
+    <div class="panel shopping-panel ${settings.supermarketMode ? "is-supermarket" : ""}">
+      <div class="section-title">
+        <h2>${settings.supermarketMode ? "Modo supermercado" : "Adicionar produto"}</h2>
+        <span class="pill">${pending.length} por comprar</span>
+      </div>
       <form class="form" id="itemForm">
         <input class="input" id="itemName" placeholder="Produto" autocomplete="off">
         <input class="input" id="itemQty" placeholder="Qtd" autocomplete="off">
-        <select id="itemCategory">${categories.slice(1).map(optionHtml).join("")}</select>
+        <select id="itemCategory">${shoppingCategories.map(cat => optionHtml(cat.name)).join("")}</select>
         <button class="button primary" type="submit">Adicionar</button>
       </form>
-      <div class="toolbar">
+      <div class="toolbar shopping-toolbar">
         <select data-setting="itemFilter" aria-label="Filtrar compras">${categories.map(value => optionHtml(value, settings.itemFilter)).join("")}</select>
+        <button class="button secondary supermarket-toggle ${settings.supermarketMode ? "active" : ""}" type="button" data-action="toggle-supermarket-mode">🛒 ${modeLabel}</button>
         <button class="button secondary" type="button" data-action="clear-done">Limpar concluídos</button>
-        <button class="button secondary" type="button" data-action="export">Exportar</button>
       </div>
-      <div class="list">${visibleItems().map(itemHtml).join("") || empty("A lista está limpa.")}</div>
+      <div class="category-strip">${shoppingCategories.map(cat => `<button class="category-pill ${settings.itemFilter === cat.name ? "active" : ""}" type="button" data-filter-category="${escapeHtml(cat.name)}">${cat.icon}<span>${escapeHtml(cat.name)}</span></button>`).join("")}</div>
+      <div class="list ${settings.supermarketMode ? "supermarket-list" : ""}">${visibleItems().map(item => itemHtml(item, { supermarket: settings.supermarketMode })).join("") || empty("Lista limpa", "Adiciona o primeiro produto para a próxima ida ao supermercado.", "🛒")}</div>
     </div>
-    <div class="panel">
-      <div class="section-title"><h2>Comprados</h2><span class="pill">${done.length}</span></div>
-      <div class="list">${done.map(itemHtml).join("") || empty("Ainda não há comprados.")}</div>
-    </div>
+    ${settings.supermarketMode ? "" : `
+      <div class="panel">
+        <div class="section-title"><h2>Comprados</h2><span class="pill">${done.length}</span></div>
+        <div class="list">${done.map(item => itemHtml(item)).join("") || empty("Ainda nada comprado", "Quando marcares produtos, eles aparecem aqui riscados.", "✨")}</div>
+      </div>
+    `}
   `;
 
   $("#itemForm").addEventListener("submit", addItem);
 }
 
 function renderTasks() {
-  const pending = tasks.filter(task => task.status !== "done");
-  const done = tasks.filter(task => task.status === "done");
+  const pending = pendingTasks();
+  const done = doneTasks();
   const filters = ["Todas", "Alta", "Normal", "Baixa", "Hoje", "Amanhã", "Esta semana", "Sem data"];
 
   $("#tarefas").innerHTML = `
@@ -760,11 +852,16 @@ function renderTasks() {
         <button class="button secondary" type="button" data-action="clear-done">Limpar concluídos</button>
         <button class="button secondary" type="button" data-action="export">Exportar</button>
       </div>
-      <div class="list">${visibleTasks().map(taskHtml).join("") || empty("Sem tarefas abertas.")}</div>
+      <div class="priority-guide">
+        <span class="priority-chip priority-baixa">🌙 Baixa</span>
+        <span class="priority-chip priority-normal">✨ Normal</span>
+        <span class="priority-chip priority-alta">🔥 Urgente</span>
+      </div>
+      <div class="list">${visibleTasks().map(taskHtml).join("") || empty("Tudo tratado", "Sem tarefas pendentes por agora.", "✅")}</div>
     </div>
     <div class="panel">
       <div class="section-title"><h2>Concluídas</h2><span class="pill">${done.length}</span></div>
-      <div class="list">${done.map(taskHtml).join("") || empty("Ainda não há tarefas concluídas.")}</div>
+      <div class="list">${done.map(taskHtml).join("") || empty("Ainda sem concluídas", "As tarefas terminadas aparecem aqui.", "🏁")}</div>
     </div>
   `;
 
@@ -847,8 +944,8 @@ function optionHtml(value, selected = "") {
   return `<option ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`;
 }
 
-function empty(text) {
-  return `<div class="empty">${escapeHtml(text)}</div>`;
+function empty(title, text = "", icon = "✨") {
+  return `<div class="empty"><span>${icon}</span><b>${escapeHtml(title)}</b>${text ? `<small>${escapeHtml(text)}</small>` : ""}</div>`;
 }
 
 function render() {
@@ -872,6 +969,12 @@ function handleClick(event) {
     return;
   }
 
+  const categoryButton = event.target.closest("[data-filter-category]");
+  if (categoryButton) {
+    setItemFilter(categoryButton.dataset.filterCategory);
+    return;
+  }
+
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
 
@@ -883,6 +986,7 @@ function handleClick(event) {
     "export": exportData,
     "enable-notifications": enableNotifications,
     "toggle-local-notifications": toggleLocalNotifications,
+    "toggle-supermarket-mode": toggleSupermarketMode,
     "test-notification": testLocalNotification,
     "copy-token": copyFcmToken,
     "force-update": forceAppUpdate,
