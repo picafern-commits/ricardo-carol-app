@@ -34,7 +34,7 @@ const firebaseConfig = {
   measurementId: "G-PF1RSC4F1N"
 };
 
-const VAPID_KEY = ""; // Cola aqui a Web Push certificate key pair / VAPID_KEY do Firebase Messaging
+const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
 const ROOM_ID = "principal";
 const STORE = {
   settings: "rc_settings",
