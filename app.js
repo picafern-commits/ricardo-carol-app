@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
-const APP_VERSION = "12.0.0";
+const APP_VERSION = "13.0.0";
 const PUSH_SERVICE_WORKER = "/firebase-messaging-sw.js";
 const ROOM_ID = "principal";
 const STORE = {
@@ -446,8 +446,10 @@ function goTo(pageId) {
   document.querySelectorAll("[data-tab]").forEach(button => {
     button.classList.toggle("active", button.dataset.tab === tab.id);
   });
-  $("#pageTitle").textContent = tab.label;
-  $("#pageSub").textContent = tab.sub;
+  const titleEl = $("#pageTitle");
+  const subEl = $("#pageSub");
+  if (titleEl) titleEl.textContent = tab.label;
+  if (subEl) subEl.textContent = tab.sub;
   if (location.hash !== `#${tab.id}`) {
     history.replaceState(null, "", `#${tab.id}`);
   }

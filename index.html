@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Ricardo & Carol">
-  <link rel="manifest" href="manifest.json?v=12">
+  <link rel="manifest" href="manifest.json?v=13">
   <link rel="icon" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
   <title>Ricardo & Carol</title>
 </head>
 <body>
@@ -37,23 +37,11 @@
     </aside>
 
     <main class="main">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Ricardo & Carol</p>
-          <h1 id="pageTitle">Dashboard</h1>
-          <p id="pageSub">Resumo das compras, tarefas e atividade.</p>
-        </div>
-        <div class="top-actions">
-          <button class="button secondary" type="button" data-action="sync">Sincronizar</button>
-          <button class="button primary" type="button" data-action="quick-add">Adicionar</button>
-        </div>
-      </header>
-
-      <section class="page active" id="dashboard" aria-labelledby="pageTitle"></section>
-      <section class="page" id="compras" aria-labelledby="pageTitle"></section>
-      <section class="page" id="tarefas" aria-labelledby="pageTitle"></section>
-      <section class="page" id="notificacoes" aria-labelledby="pageTitle"></section>
-      <section class="page" id="configuracoes" aria-labelledby="pageTitle"></section>
+      <section class="page active" id="dashboard" aria-label="Hoje"></section>
+      <section class="page" id="compras" aria-label="Compras"></section>
+      <section class="page" id="tarefas" aria-label="Tarefas"></section>
+      <section class="page" id="notificacoes" aria-label="Avisos"></section>
+      <section class="page" id="configuracoes" aria-label="Mais"></section>
     </main>
   </div>
 
@@ -69,6 +57,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=12"></script>
+  <script type="module" src="app.js?v=13"></script>
 </body>
 </html>
