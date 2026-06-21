@@ -34,7 +34,7 @@ const firebaseConfig = {
   measurementId: "G-PF1RSC4F1N"
 };
 
-const VAPID_KEY = "";
+const VAPID_KEY = ""; // Cola aqui a Web Push certificate key pair / VAPID_KEY do Firebase Messaging
 const ROOM_ID = "principal";
 const STORE = {
   settings: "rc_settings",
@@ -57,6 +57,11 @@ const defaultSettings = {
   itemFilter: "Todas",
   taskFilter: "Todas"
 };
+
+function hasValidVapidKey() {
+  return VAPID_KEY && VAPID_KEY.length > 40 && !VAPID_KEY.includes("COLOCA_AQUI");
+}
+
 
 let db = null;
 let auth = null;
@@ -236,6 +241,19 @@ function showLocalNotification(title, body) {
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification(title, { body, icon: "assets/icon-192.png" });
   }
+}
+
+async function testLocalNotification() {
+  if (!("Notification" in window)) {
+    toast("Este dispositivo não suporta notificações.");
+    return;
+  }
+  if (Notification.permission !== "granted") {
+    await enableNotifications();
+    return;
+  }
+  showLocalNotification("Ricardo & Carol", "Teste de notificação neste dispositivo.");
+  toast("Notificação de teste enviada.");
 }
 
 async function initFirebase() {
@@ -429,7 +447,7 @@ async function enableNotifications() {
   toast("Notificações ativas.");
 
   try {
-    if (!VAPID_KEY || !db || !(await isSupported())) return;
+    if (!hasValidVapidKey() || !db || !(await isSupported())) return;
     messaging = getMessaging();
     const registration = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
@@ -630,14 +648,21 @@ function renderTasks() {
 }
 
 function renderNotifications() {
+  const permission = "Notification" in window ? Notification.permission : "não suportado";
+  const pushReady = hasValidVapidKey();
+
   $("#notificacoes").innerHTML = `
     <div class="panel">
       <div class="section-title"><h2>Notificações</h2><button class="button primary" type="button" data-action="enable-notifications">Ativar neste dispositivo</button></div>
       <div class="settings-row">
-        <div><b>Alertas locais</b><small>Estado atual: ${settings.localNotifications ? "ligados" : "desligados"}.</small></div>
+        <div><b>Alertas locais</b><small>Estado atual: ${settings.localNotifications ? "ligados" : "desligados"}. Permissão: ${permission}.</small></div>
         <button class="toggle ${settings.localNotifications ? "on" : ""}" type="button" data-action="toggle-local-notifications" aria-label="Alternar notificações locais"></button>
       </div>
-      <p class="note">A base para Firebase Messaging está preparada. Sem chave VAPID, a app mantém compras e tarefas a funcionar normalmente.</p>
+      <div class="settings-row">
+        <div><b>Firebase Push</b><small>${pushReady ? "Chave VAPID colocada no código." : "A aguardar VAPID_KEY do Firebase."}</small></div>
+        <button class="button secondary" type="button" data-action="test-notification">Testar</button>
+      </div>
+      <p class="note">Para push real com a app fechada: ativa Anonymous Auth, publica as Firestore Rules, gera a Web Push certificate key pair no Firebase Messaging e cola a chave em <b>VAPID_KEY</b> no app.js.</p>
     </div>
     <div class="panel">
       <h2>Histórico</h2>
@@ -720,6 +745,7 @@ function handleClick(event) {
     "export": exportData,
     "enable-notifications": enableNotifications,
     "toggle-local-notifications": toggleLocalNotifications,
+    "test-notification": testLocalNotification,
     "toggle-dark": toggleDarkMode,
     "clear-local": clearLocalData,
     "toggle-item": () => toggleItem(id),

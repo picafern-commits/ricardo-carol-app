@@ -6,16 +6,42 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function validCompra() {
+      return request.resource.data.keys().hasOnly([
+        'name', 'qty', 'category', 'status', 'by', 'createdAt', 'doneAt'
+      ])
+      && request.resource.data.name is string
+      && request.resource.data.qty is string
+      && request.resource.data.category is string
+      && request.resource.data.status in ['pending', 'done'];
+    }
+
+    function validTarefa() {
+      return request.resource.data.keys().hasOnly([
+        'title', 'due', 'priority', 'status', 'by', 'createdAt', 'doneAt'
+      ])
+      && request.resource.data.title is string
+      && request.resource.data.due is string
+      && request.resource.data.priority in ['Baixa', 'Normal', 'Alta']
+      && request.resource.data.status in ['pending', 'done'];
+    }
+
     match /casal/principal/compras/{itemId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && validCompra();
     }
 
     match /casal/principal/tarefas/{taskId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && validTarefa();
     }
 
     match /casal/principal/logs/{logId} {
-      allow read, create: if signedIn();
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['text', 'type', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.type in ['info', 'shop', 'task'];
       allow update, delete: if false;
     }
 
