@@ -30,14 +30,5 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Install Functions dependencies
-        working-directory: functions
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Deploy Firebase
-        run: firebase deploy --project ricardo-carol-app --non-interactive
+      - name: Deploy Firebase Hosting and Firestore
+        run: firebase deploy --only hosting,firestore --project ricardo-carol-app --non-interactive
