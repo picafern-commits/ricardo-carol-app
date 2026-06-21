@@ -1,0 +1,46 @@
+name: Deploy Firebase
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Auth Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_RICARDO_CAROL_APP }}'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Set Functions artifact cleanup policy
+        run: firebase functions:artifacts:setpolicy --location europe-west1 --days 30 --project ricardo-carol-app --force
+
+      - name: Deploy Firebase
+        run: firebase deploy --project ricardo-carol-app --non-interactive
