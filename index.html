@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="pt">
+<head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Ricardo&Carol</title><link rel="manifest" href="manifest.json"><style>
+ 
+body{
+font-family:-apple-system,BlinkMacSystemFont;
+background:#f2f2f7;
+margin:0;
+padding:20px;
+}
+ 
+.container{
+max-width:520px;
+margin:auto;
+background:white;
+border-radius:20px;
+padding:20px;
+box-shadow:0 10px 30px rgba(0,0,0,0.15);
+}
+ 
+h1{
+text-align:center;
+}
+ 
+input,select{
+width:100%;
+padding:12px;
+margin:6px 0;
+border-radius:10px;
+border:1px solid #ddd;
+font-size:16px;
+}
+ 
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:10px;
+background:#007aff;
+color:white;
+font-size:16px;
+margin-top:6px;
+}
+ 
+.row{
+display:flex;
+gap:10px;
+}
+ 
+.qty{
+width:80px;
+}
+ 
+ul{
+list-style:none;
+padding:0;
+}
+ 
+li{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:10px;
+border-bottom:1px solid #eee;
+}
+ 
+.done{
+text-decoration:line-through;
+color:gray;
+}
+ 
+.price{
+font-size:14px;
+color:#888;
+}
+ 
+.total{
+font-size:18px;
+font-weight:bold;
+margin-top:10px;
+}
+ 
+</style></head><body><div class="container"><h1>🛒 Ricardo&Carol</h1><input id="search" placeholder="Pesquisar..." onkeyup="render()"><h3>Adicionar produto</h3><input id="name" placeholder="Produto"><div class="row">
+<input id="qty" class="qty" placeholder="Qtd">
+<input id="price" placeholder="Preço €">
+</div><select id="category">
+<option>Supermercado</option>
+<option>Casa</option>
+<option>Farmácia</option>
+<option>Outros</option>
+</select><button onclick="addItem()">Adicionar</button>
+ 
+<button onclick="voice()">🎤 Adicionar por voz</button>
+ 
+<h3>Lista</h3>
+<ul id="list"></ul><div class="total" id="total"></div><h3>Histórico</h3>
+<ul id="history"></ul></div><script>
+ 
+let items = JSON.parse(localStorage.getItem("items")||"[]")
+let history = JSON.parse(localStorage.getItem("history")||"[]")
+ 
+function save(){
+localStorage.setItem("items",JSON.stringify(items))
+localStorage.setItem("history",JSON.stringify(history))
+render()
+}
+ 
+function addItem(){
+ 
+let name=document.getElementById("name").value
+let qty=document.getElementById("qty").value || 1
+let price=parseFloat(document.getElementById("price").value)||0
+let cat=document.getElementById("category").value
+ 
+if(!name) return
+ 
+items.push({
+name:name,
+qty:qty,
+price:price,
+category:cat
+})
+ 
+document.getElementById("name").value=""
+document.getElementById("qty").value=""
+document.getElementById("price").value=""
+ 
+save()
+ 
+}
+ 
+function toggle(i){
+ 
+let item=items[i]
+ 
+history.unshift({
+name:item.name,
+qty:item.qty,
+date:new Date().toLocaleDateString()
+})
+ 
+items.splice(i,1)
+ 
+save()
+ 
+}
+ 
+function removeItem(i){
+ 
+items.splice(i,1)
+ 
+save()
+ 
+}
+ 
+function render(){
+ 
+let list=document.getElementById("list")
+let hist=document.getElementById("history")
+let search=document.getElementById("search").value.toLowerCase()
+ 
+list.innerHTML=""
+hist.innerHTML=""
+ 
+let total=0
+ 
+items
+.filter(x=>x.name.toLowerCase().includes(search))
+.forEach((item,i)=>{
+ 
+total+=item.price*item.qty
+ 
+let li=document.createElement("li")
+ 
+li.innerHTML=`
+ 
+<div>
+ 
+<input type="checkbox" onchange="toggle(${i})">
+ 
+${item.qty}x ${item.name}
+ 
+<div class="price">${item.category} • €${item.price}</div>
+ 
+</div>
+ 
+<button onclick="removeItem(${i})">❌</button>
+ 
+`
+ 
+list.appendChild(li)
+ 
+})
+ 
+document.getElementById("total").innerText="Total estimado: €"+total.toFixed(2)
+ 
+history.forEach(item=>{
+ 
+let li=document.createElement("li")
+ 
+li.innerHTML=`${item.qty}x ${item.name} - ${item.date}`
+ 
+hist.appendChild(li)
+ 
+})
+ 
+}
+ 
+render()
+ 
+function voice(){
+ 
+let rec = new webkitSpeechRecognition()
+ 
+rec.lang="pt-PT"
+ 
+rec.onresult=function(e){
+ 
+document.getElementById("name").value=e.results[0][0].transcript
+ 
+}
+ 
+rec.start()
+ 
+}
+ 
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("service-worker.js")
+}
+ 
+</script></body>
+</html>
+ 
