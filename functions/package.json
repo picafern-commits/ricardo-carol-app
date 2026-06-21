@@ -4,7 +4,7 @@
   "private": true,
   "description": "Cloud Functions para notificações automáticas da app Ricardo & Carol.",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {

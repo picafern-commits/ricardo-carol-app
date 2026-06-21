@@ -1,10 +1,10 @@
-const CACHE_NAME = "ricardo-carol-pwa-v5";
+const CACHE_NAME = "ricardo-carol-pwa-v7";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/styles.css?v=5",
-  "/app.js?v=5",
-  "/manifest.json?v=5",
+  "/styles.css?v=6",
+  "/app.js?v=6",
+  "/manifest.json?v=6",
   "/assets/icon-192.png",
   "/assets/icon-512.png",
   "/assets/apple-touch-icon.png"

@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
-const APP_VERSION = "5.0.0";
+const APP_VERSION = "7.0.0";
 const PUSH_SERVICE_WORKER = "/firebase-messaging-sw.js";
 const ROOM_ID = "principal";
 const STORE = {
@@ -885,6 +885,28 @@ function registerServiceWorker() {
   });
 }
 
+
+function lockAppViewport() {
+  const setViewportHeight = () => {
+    document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+  };
+
+  setViewportHeight();
+  window.addEventListener("resize", setViewportHeight);
+  window.addEventListener("orientationchange", () => setTimeout(setViewportHeight, 250));
+
+  document.addEventListener("gesturestart", event => event.preventDefault(), { passive: false });
+
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", event => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+}
+
 window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("hashchange", () => goTo(location.hash.replace("#", "") || "dashboard"));
@@ -896,5 +918,6 @@ loadCaches();
 render();
 goTo(location.hash.replace("#", "") || "dashboard");
 updateConnectionState();
+lockAppViewport();
 registerServiceWorker();
 initFirebase();
