@@ -1,87 +1,62 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#6d5dfc" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Ricardo & Carol" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#536dfe">
+  <meta name="description" content="Lista partilhada de compras e tarefas para Ricardo & Carol.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Ricardo & Carol">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
   <title>Ricardo & Carol</title>
-  <style>
-    :root{--bg:#f6f4ff;--panel:#ffffff;--panel2:#fbfaff;--txt:#171525;--muted:#706d83;--line:#e6e1ff;--primary:#6d5dfc;--primary2:#ff7a90;--good:#10b981;--warn:#f59e0b;--danger:#ef4444;--shadow:0 18px 45px rgba(68,55,160,.14);--radius:24px}
-    [data-theme="dark"]{--bg:#12111a;--panel:#1c1a27;--panel2:#252235;--txt:#f7f5ff;--muted:#aaa4c5;--line:#39354d;--primary:#9b8cff;--primary2:#ff8aa0;--shadow:0 18px 45px rgba(0,0,0,.35)}
-    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:radial-gradient(circle at top left,rgba(109,93,252,.18),transparent 34%),var(--bg);color:var(--txt);min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-    button,input,select,textarea{font:inherit} button{cursor:pointer;border:0} .app{max-width:1200px;margin:auto;padding:18px;display:grid;grid-template-columns:250px 1fr;gap:18px}.sidebar,.card{background:rgba(255,255,255,.72);background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);backdrop-filter:blur(14px)}.sidebar{padding:18px;position:sticky;top:18px;height:calc(100vh - 36px);display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.brand img{width:52px;height:52px;border-radius:16px}.brand strong{font-size:18px}.brand small{display:block;color:var(--muted)}.nav{display:grid;gap:8px}.nav button{width:100%;padding:13px;border-radius:16px;background:transparent;color:var(--muted);text-align:left;font-weight:700}.nav button.active{background:linear-gradient(135deg,var(--primary),#8877ff);color:white}.status{margin-top:auto;color:var(--muted);font-size:13px;display:grid;gap:8px}.main{min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.top h1{margin:0;font-size:28px}.top p{margin:4px 0 0;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{background:var(--primary);color:white;border-radius:15px;padding:12px 16px;font-weight:800}.btn.alt{background:var(--panel);color:var(--txt);border:1px solid var(--line)}.btn.danger{background:var(--danger)}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{padding:18px}.span4{grid-column:span 4}.span6{grid-column:span 6}.span8{grid-column:span 8}.span12{grid-column:span 12}.kpi{display:flex;justify-content:space-between;align-items:center}.kpi b{font-size:34px}.kpi span{color:var(--muted)}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-title h2{margin:0;font-size:20px}.form{display:grid;grid-template-columns:2fr .8fr 1fr auto;gap:8px;margin-bottom:14px}.form.task{grid-template-columns:2fr 1fr 1fr auto}.input,select,textarea{width:100%;padding:13px 14px;border-radius:15px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);outline:none}.input:focus,select:focus,textarea:focus{border-color:var(--primary)}.list{display:grid;gap:9px}.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:17px;background:var(--panel2);border:1px solid var(--line)}.check{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;background:transparent;color:transparent}.done .check{background:var(--good);border-color:var(--good);color:white}.item.done .name{text-decoration:line-through;color:var(--muted)}.name{font-weight:800}.meta{font-size:13px;color:var(--muted);margin-top:3px}.pill{padding:6px 10px;border-radius:999px;background:rgba(109,93,252,.12);color:var(--primary);font-weight:800;font-size:12px}.empty{padding:26px;border:1px dashed var(--line);border-radius:18px;text-align:center;color:var(--muted)}.page{display:none}.page.active{display:block}.mobilebar{display:none}.switch{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border:1px solid var(--line);border-radius:17px;background:var(--panel2);margin-bottom:10px}.toggle{width:54px;height:32px;border-radius:999px;background:var(--line);position:relative}.toggle::after{content:"";position:absolute;width:26px;height:26px;top:3px;left:3px;background:white;border-radius:50%;transition:.2s}.toggle.on{background:var(--primary)}.toggle.on::after{left:25px}.note{color:var(--muted);line-height:1.5}.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#171525;color:white;padding:12px 16px;border-radius:999px;box-shadow:var(--shadow);display:none;z-index:9}.toast.show{display:block}.smallbtn{background:transparent;color:var(--muted);padding:8px;border-radius:10px}.smallbtn:hover{background:var(--line)}
-    @media(max-width:850px){.app{display:block;padding:12px 12px 92px}.sidebar{display:none}.top{padding:8px 2px}.top h1{font-size:24px}.grid{display:block}.card{margin-bottom:14px}.form,.form.task{grid-template-columns:1fr}.mobilebar{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:10px;right:10px;bottom:10px;padding:8px;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);backdrop-filter:blur(16px);z-index:8}.mobilebar button{background:transparent;color:var(--muted);border-radius:16px;padding:9px 3px;font-size:11px;font-weight:800}.mobilebar button.active{background:var(--primary);color:white}.item{grid-template-columns:auto 1fr auto}.actions .btn{padding:10px 12px}}
-  </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand"><img src="icon-192.png" alt=""><div><strong>Ricardo & Carol</strong><small>Casa organizada 💜</small></div></div>
-      <nav class="nav" id="desktopNav"></nav>
-      <div class="status"><div id="syncState">● A ligar...</div><div id="userState">Sessão anónima</div></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand">
+        <img src="assets/icon-192.png" alt="">
+        <div>
+          <strong>Ricardo & Carol</strong>
+          <span>Casa partilhada</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" id="desktopNav"></nav>
+
+      <div class="connection-card">
+        <div id="syncState"><span class="status-dot waiting"></span>A ligar...</div>
+        <div id="userState">Sessão anónima</div>
+      </div>
     </aside>
+
     <main class="main">
-      <div class="top"><div><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Tudo sincronizado entre vocês.</p></div><div class="actions"><button class="btn alt" onclick="syncNow()">Sincronizar</button><button class="btn" onclick="quickAdd()">+ Rápido</button></div></div>
-      <section class="page active" id="dashboard"></section>
-      <section class="page" id="compras"></section>
-      <section class="page" id="tarefas"></section>
-      <section class="page" id="notificacoes"></section>
-      <section class="page" id="configuracoes"></section>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Ricardo & Carol</p>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSub">Resumo das compras, tarefas e atividade.</p>
+        </div>
+        <div class="top-actions">
+          <button class="button secondary" type="button" data-action="sync">Sincronizar</button>
+          <button class="button primary" type="button" data-action="quick-add">Adicionar</button>
+        </div>
+      </header>
+
+      <section class="page active" id="dashboard" aria-labelledby="pageTitle"></section>
+      <section class="page" id="compras" aria-labelledby="pageTitle"></section>
+      <section class="page" id="tarefas" aria-labelledby="pageTitle"></section>
+      <section class="page" id="notificacoes" aria-labelledby="pageTitle"></section>
+      <section class="page" id="configuracoes" aria-labelledby="pageTitle"></section>
     </main>
   </div>
-  <nav class="mobilebar" id="mobileNav"></nav><div class="toast" id="toast"></div>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-    import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-    import { getMessaging, getToken, onMessage, isSupported } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js';
+  <nav class="mobile-nav" id="mobileNav" aria-label="Navegação principal"></nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    const firebaseConfig = { apiKey:'AIzaSyCqOp8DRQQI4JZSzOnX_4yl3TrhxT4m6S0', authDomain:'ricardo-carol-app.firebaseapp.com', projectId:'ricardo-carol-app', storageBucket:'ricardo-carol-app.firebasestorage.app', messagingSenderId:'559158840335', appId:'1:559158840335:web:304ee3a5cd570912aca77a', measurementId:'G-PF1RSC4F1N' };
-    const VAPID_KEY = ''; // Para notificações push reais: colar aqui a Web Push certificate key do Firebase Cloud Messaging.
-    const tabs=[['dashboard','🏠','Dashboard'],['compras','🛒','Compras'],['tarefas','✅','Tarefas'],['notificacoes','🔔','Notificações'],['configuracoes','⚙️','Configurações']];
-    let db=null,auth=null,messaging=null,uid=null,items=[],tasks=[],logs=[],settings=JSON.parse(localStorage.getItem('rc_settings')||'{"dark":false,"localNotify":true}');
-    let unsub=[]; const $=id=>document.getElementById(id);
-    if(settings.dark) document.documentElement.dataset.theme='dark';
-
-    function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)}
-    function saveSettings(){localStorage.setItem('rc_settings',JSON.stringify(settings));}
-    function localSave(){localStorage.setItem('rc_items',JSON.stringify(items));localStorage.setItem('rc_tasks',JSON.stringify(tasks));localStorage.setItem('rc_logs',JSON.stringify(logs.slice(0,80)));}
-    function localLoad(){items=JSON.parse(localStorage.getItem('rc_items')||'[]');tasks=JSON.parse(localStorage.getItem('rc_tasks')||'[]');logs=JSON.parse(localStorage.getItem('rc_logs')||'[]');}
-    function fmt(d){try{return d?.toDate?d.toDate().toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'}):new Date(d).toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}catch{return 'Agora'}}
-    function notify(title,body){ if(!settings.localNotify) return; if('Notification' in window && Notification.permission==='granted') new Notification(title,{body,icon:'icon-192.png'}); }
-    async function addLog(text,type='info'){ const log={text,type,createdAt:new Date().toISOString()}; logs.unshift(log); localSave(); render(); if(db) await addDoc(collection(db,'casal','principal','logs'),{...log,createdAt:serverTimestamp()}); }
-
-    function renderNav(){const html=tabs.map(([id,ico,label])=>`<button onclick="go('${id}')" class="${id==='dashboard'?'active':''}" data-tab="${id}">${ico} ${label}</button>`).join('');$('desktopNav').innerHTML=html;$('mobileNav').innerHTML=tabs.map(([id,ico,label])=>`<button onclick="go('${id}')" class="${id==='dashboard'?'active':''}" data-tab="${id}"><div>${ico}</div>${label.split(' ')[0]}</button>`).join('')}
-    window.go=(id)=>{document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));$('pageTitle').textContent=tabs.find(t=>t[0]===id)[2];$('pageSub').textContent={dashboard:'Resumo da casa, compras e tarefas.',compras:'Lista partilhada em tempo real.',tarefas:'Tarefas para não deixar nada cair.',notificacoes:'Alertas e histórico de atividade.',configuracoes:'Tema, dados e notificações.'}[id];render();}
-
-    async function initFirebase(){try{const app=initializeApp(firebaseConfig);db=getFirestore(app);auth=getAuth(app);await signInAnonymously(auth);onAuthStateChanged(auth,u=>{uid=u?.uid;$('userState').textContent=uid?'Online: '+uid.slice(0,6):'Sessão anónima'});listen();$('syncState').textContent='● Sincronizado online';}catch(e){console.error(e);$('syncState').textContent='● Modo local';toast('Firebase não ligou. A app continua em modo local.')}}
-    function listen(){unsub.forEach(f=>f());unsub=[];unsub.push(onSnapshot(query(collection(db,'casal','principal','compras'),orderBy('createdAt','desc')),s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));localSave();render();}));unsub.push(onSnapshot(query(collection(db,'casal','principal','tarefas'),orderBy('createdAt','desc')),s=>{tasks=s.docs.map(d=>({id:d.id,...d.data()}));localSave();render();}));unsub.push(onSnapshot(query(collection(db,'casal','principal','logs'),orderBy('createdAt','desc')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()})).slice(0,80);localSave();render();}));}
-    async function addItem(){const name=$('itemName').value.trim(); if(!name) return toast('Escreve o produto.'); const item={name,qty:$('itemQty').value||'1',cat:$('itemCat').value,status:'pending',createdAt:new Date().toISOString(),by:uid||'local'}; $('itemName').value='';$('itemQty').value=''; if(db) await addDoc(collection(db,'casal','principal','compras'),{...item,createdAt:serverTimestamp()}); else {items.unshift({...item,id:crypto.randomUUID()});localSave();render()} await addLog('Produto adicionado: '+name,'shop'); notify('Novo produto',name);}
-    async function toggleItem(id){const it=items.find(x=>x.id===id); if(!it) return; const done=it.status!=='done'; if(db) await updateDoc(doc(db,'casal','principal','compras',id),{status:done?'done':'pending',doneAt:done?serverTimestamp():null}); else {it.status=done?'done':'pending';localSave();render()} await addLog((done?'Comprado: ':'Reaberto: ')+it.name,'shop');}
-    async function delItem(id){if(db) await deleteDoc(doc(db,'casal','principal','compras',id)); else {items=items.filter(x=>x.id!==id);localSave();render()} }
-    async function addTask(){const title=$('taskTitle').value.trim(); if(!title) return toast('Escreve a tarefa.'); const task={title,due:$('taskDue').value||'Hoje',prio:$('taskPrio').value,status:'pending',createdAt:new Date().toISOString(),by:uid||'local'}; $('taskTitle').value=''; if(db) await addDoc(collection(db,'casal','principal','tarefas'),{...task,createdAt:serverTimestamp()}); else {tasks.unshift({...task,id:crypto.randomUUID()});localSave();render()} await addLog('Tarefa criada: '+title,'task'); notify('Nova tarefa',title);}
-    async function toggleTask(id){const t=tasks.find(x=>x.id===id); if(!t) return; const done=t.status!=='done'; if(db) await updateDoc(doc(db,'casal','principal','tarefas',id),{status:done?'done':'pending',doneAt:done?serverTimestamp():null}); else {t.status=done?'done':'pending';localSave();render()} await addLog((done?'Tarefa concluída: ':'Tarefa reaberta: ')+t.title,'task');}
-    async function delTask(id){if(db) await deleteDoc(doc(db,'casal','principal','tarefas',id)); else {tasks=tasks.filter(x=>x.id!==id);localSave();render()} }
-    window.addItem=addItem;window.toggleItem=toggleItem;window.delItem=delItem;window.addTask=addTask;window.toggleTask=toggleTask;window.delTask=delTask;window.syncNow=()=>{toast(db?'Sincronizado com Firebase.':'Modo local ativo.');render()}; window.quickAdd=()=>{go('compras');setTimeout(()=>$('itemName')?.focus(),80)};
-
-    async function enableNotifications(){ if(!('Notification' in window)) return toast('Este dispositivo não suporta notificações.'); const perm=await Notification.requestPermission(); if(perm!=='granted') return toast('Notificações recusadas.'); settings.localNotify=true; saveSettings(); notify('Ricardo & Carol','Notificações ativas neste dispositivo.'); toast('Notificações ativas.'); try{ if(VAPID_KEY && await isSupported()){ messaging=getMessaging(); const sw=await navigator.serviceWorker.ready; const token=await getToken(messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:sw}); await setDoc(doc(db,'casal','principal','tokens',token),{token,uid,createdAt:serverTimestamp(),ua:navigator.userAgent}); onMessage(messaging,p=>notify(p.notification?.title||'Ricardo & Carol',p.notification?.body||'Nova atualização')); } }catch(e){console.warn(e)} render();}
-    window.enableNotifications=enableNotifications;
-    window.toggleDark=()=>{settings.dark=!settings.dark;document.documentElement.dataset.theme=settings.dark?'dark':'';saveSettings();render()};
-    window.toggleLocalNotify=()=>{settings.localNotify=!settings.localNotify;saveSettings();render()};
-    window.clearDone=async()=>{for(const it of items.filter(x=>x.status==='done')) await delItem(it.id); for(const t of tasks.filter(x=>x.status==='done')) await delTask(t.id); toast('Concluídos limpos.')};
-
-    function itemHtml(it){return `<div class="item ${it.status==='done'?'done':''}"><button class="check" onclick="toggleItem('${it.id}')">✓</button><div><div class="name">${esc(it.name)}</div><div class="meta">${esc(it.qty||'1')} · ${esc(it.cat||'Geral')}</div></div><button class="smallbtn" onclick="delItem('${it.id}')">✕</button></div>`}
-    function taskHtml(t){return `<div class="item ${t.status==='done'?'done':''}"><button class="check" onclick="toggleTask('${t.id}')">✓</button><div><div class="name">${esc(t.title)}</div><div class="meta">${esc(t.due||'Hoje')} · ${esc(t.prio||'Normal')}</div></div><button class="smallbtn" onclick="delTask('${t.id}')">✕</button></div>`}
-    function esc(s=''){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-    function render(){const pendingItems=items.filter(i=>i.status!=='done'), doneItems=items.filter(i=>i.status==='done'), pendingTasks=tasks.filter(t=>t.status!=='done'); $('dashboard').innerHTML=`<div class="grid"><div class="card span4 kpi"><div><b>${pendingItems.length}</b><br><span>Compras pendentes</span></div><span class="pill">🛒 Lista</span></div><div class="card span4 kpi"><div><b>${pendingTasks.length}</b><br><span>Tarefas pendentes</span></div><span class="pill">✅ Casa</span></div><div class="card span4 kpi"><div><b>${logs.length}</b><br><span>Atividades</span></div><span class="pill">🔔 Sync</span></div><div class="card span6"><div class="section-title"><h2>Próximas compras</h2><button class="btn alt" onclick="go('compras')">Abrir</button></div><div class="list">${pendingItems.slice(0,5).map(itemHtml).join('')||'<div class="empty">Sem compras pendentes.</div>'}</div></div><div class="card span6"><div class="section-title"><h2>Próximas tarefas</h2><button class="btn alt" onclick="go('tarefas')">Abrir</button></div><div class="list">${pendingTasks.slice(0,5).map(taskHtml).join('')||'<div class="empty">Sem tarefas pendentes.</div>'}</div></div></div>`; $('compras').innerHTML=`<div class="card"><div class="section-title"><h2>Adicionar produto</h2><span class="pill">${pendingItems.length} por comprar</span></div><div class="form"><input class="input" id="itemName" placeholder="Produto"><input class="input" id="itemQty" placeholder="Qtd"><select id="itemCat"><option>Supermercado</option><option>Casa</option><option>Farmácia</option><option>Animais</option><option>Outros</option></select><button class="btn" onclick="addItem()">Adicionar</button></div><div class="list">${pendingItems.map(itemHtml).join('')||'<div class="empty">A lista está limpa.</div>'}</div></div><div class="card"><div class="section-title"><h2>Comprados</h2><button class="btn alt" onclick="clearDone()">Limpar</button></div><div class="list">${doneItems.map(itemHtml).join('')||'<div class="empty">Ainda não há comprados.</div>'}</div></div>`; $('tarefas').innerHTML=`<div class="card"><div class="section-title"><h2>Adicionar tarefa</h2><span class="pill">${pendingTasks.length} abertas</span></div><div class="form task"><input class="input" id="taskTitle" placeholder="Tarefa"><select id="taskDue"><option>Hoje</option><option>Amanhã</option><option>Esta semana</option><option>Sem data</option></select><select id="taskPrio"><option>Normal</option><option>Alta</option><option>Baixa</option></select><button class="btn" onclick="addTask()">Adicionar</button></div><div class="list">${tasks.map(taskHtml).join('')||'<div class="empty">Sem tarefas.</div>'}</div></div>`; $('notificacoes').innerHTML=`<div class="card"><div class="section-title"><h2>Notificações</h2><button class="btn" onclick="enableNotifications()">Ativar neste dispositivo</button></div><p class="note">Para iPhone: abrir no Safari, adicionar ao ecrã principal e depois carregar em ativar. Para push real entre dispositivos, falta só colar a chave VAPID do Firebase no código.</p></div><div class="card"><h2>Histórico</h2><div class="list">${logs.map(l=>`<div class="item"><div>${l.type==='shop'?'🛒':l.type==='task'?'✅':'🔔'}</div><div><div class="name">${esc(l.text)}</div><div class="meta">${fmt(l.createdAt)}</div></div></div>`).join('')||'<div class="empty">Sem atividade.</div>'}</div></div>`; $('configuracoes').innerHTML=`<div class="card"><h2>Preferências</h2><div class="switch"><div><b>Dark mode</b><div class="meta">Tema escuro para iPhone, Android e PC.</div></div><button class="toggle ${settings.dark?'on':''}" onclick="toggleDark()"></button></div><div class="switch"><div><b>Notificações locais</b><div class="meta">Mostra alertas quando a app está aberta ou instalada.</div></div><button class="toggle ${settings.localNotify?'on':''}" onclick="toggleLocalNotify()"></button></div></div><div class="card"><h2>Firebase</h2><p class="note">Projeto: <b>ricardo-carol-app</b><br>Dados guardados em <b>casal / principal</b> no Firestore.</p><button class="btn alt" onclick="syncNow()">Testar sincronização</button></div>`; }
-
-    if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
-    renderNav();localLoad();render();initFirebase();
-  </script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

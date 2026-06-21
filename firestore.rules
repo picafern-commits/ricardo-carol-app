@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /casal/principal/compras/{itemId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /casal/principal/tarefas/{taskId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /casal/principal/logs/{logId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /casal/principal/tokens/{tokenId} {
+      allow read, create, update, delete: if signedIn();
+    }
+  }
+}

@@ -1,1 +1,31 @@
-{"name":"Ricardo & Carol","short_name":"R&C","start_url":"index.html","scope":"./","display":"standalone","background_color":"#f6f4ff","theme_color":"#6d5dfc","orientation":"portrait-primary","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "id": "ricardo-carol-app",
+  "name": "Ricardo & Carol",
+  "short_name": "R&C",
+  "description": "Lista partilhada de compras e tarefas para Ricardo & Carol.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7ff",
+  "theme_color": "#536dfe",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Compras",
+      "short_name": "Compras",
+      "url": "./index.html#compras",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tarefas",
+      "short_name": "Tarefas",
+      "url": "./index.html#tarefas",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
