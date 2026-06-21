@@ -39,8 +39,5 @@ jobs:
             npm install
           fi
 
-      - name: Set Functions artifact cleanup policy
-        run: firebase functions:artifacts:setpolicy --location europe-west1 --days 30 --project ricardo-carol-app --force
-
       - name: Deploy Firebase
         run: firebase deploy --project ricardo-carol-app --non-interactive
