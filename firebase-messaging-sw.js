@@ -1,10 +1,10 @@
-const CACHE_NAME = "ricardo-carol-pwa-v7";
+const CACHE_NAME = "ricardo-carol-pwa-v10";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/styles.css?v=6",
-  "/app.js?v=6",
-  "/manifest.json?v=6",
+  "/styles.css?v=10",
+  "/app.js?v=10",
+  "/manifest.json?v=10",
   "/assets/icon-192.png",
   "/assets/icon-512.png",
   "/assets/apple-touch-icon.png"
@@ -114,7 +114,20 @@ self.addEventListener("fetch", event => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/index.html")));
+    event.respondWith(fetch(request, { cache: "no-store" }).catch(() => caches.match("/index.html")));
+    return;
+  }
+
+  const isVersionedAppFile = url.pathname.endsWith(".js") || url.pathname.endsWith(".css") || url.pathname.endsWith("manifest.json");
+
+  if (isVersionedAppFile) {
+    event.respondWith(
+      fetch(request, { cache: "no-store" }).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      }).catch(() => caches.match(request))
+    );
     return;
   }
 
@@ -130,5 +143,8 @@ self.addEventListener("fetch", event => {
 self.addEventListener("message", event => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (event.data?.type === "CLEAR_APP_CACHE") {
+    event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))));
   }
 });

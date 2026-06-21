@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BGjKSa4igTsspseVooRcCE4Fxl6bPzsgBb2Bi5zV-DDZxC8am9aEK9Ibtinlif16aA-t4x4tbwa7MnqkTpPXJEE";
-const APP_VERSION = "7.0.0";
+const APP_VERSION = "10.0.0";
 const PUSH_SERVICE_WORKER = "/firebase-messaging-sw.js";
 const ROOM_ID = "principal";
 const STORE = {
@@ -165,6 +165,26 @@ function toast(message) {
   element.classList.add("show");
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => element.classList.remove("show"), 2400);
+}
+
+function showUpdateScreen(title = "A atualizar a app", message = "Estamos a instalar a nova versão. Mantém a app aberta só uns segundos.") {
+  const screen = $("#updateScreen");
+  if (!screen) return;
+  const titleElement = $("#updateTitle");
+  const messageElement = $("#updateMessage");
+  if (titleElement) titleElement.textContent = title;
+  if (messageElement) messageElement.textContent = message;
+  screen.classList.add("show");
+  screen.setAttribute("aria-hidden", "false");
+  document.body.classList.add("updating");
+}
+
+function hideUpdateScreen() {
+  const screen = $("#updateScreen");
+  if (!screen) return;
+  screen.classList.remove("show");
+  screen.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("updating");
 }
 
 function collectionPath(name) {
@@ -772,7 +792,7 @@ function renderNotifications() {
         <div><b>Token FCM</b><small>${tokenText}</small></div>
         <button class="button secondary" type="button" data-action="copy-token">Copiar token</button>
       </div>
-      <p class="note">Instalada como app: <b>${standalone}</b> · Utilizador: <b>${escapeHtml(settings.profileName)}</b> · Versão: <b>${APP_VERSION}</b><br>No iPhone, abre sempre pelo ícone do ecrã principal para receber push com a app fechada.</p>
+      <p class="note">Instalada como app: <b>${standalone}</b> · Utilizador: <b>${escapeHtml(settings.profileName)}</b> · Versão: <b>${APP_VERSION}</b><br>No iPhone, abre sempre pelo ícone. As próximas atualizações entram automaticamente, sem voltar ao Safari.</p>
     </div>
     <div class="panel">
       <h2>Histórico</h2>
@@ -792,6 +812,10 @@ function renderSettings() {
       <div class="settings-row">
         <div><b>Dark mode</b><small>Estado atual: ${settings.darkMode ? "ativo" : "inativo"}.</small></div>
         <button class="toggle ${settings.darkMode ? "on" : ""}" type="button" data-action="toggle-dark" aria-label="Alternar dark mode"></button>
+      </div>
+      <div class="settings-row">
+        <div><b>Atualizações da app</b><small>Versão ${APP_VERSION}. Quando houver atualização, aparece um ecrã de loading e a app abre a nova versão sozinha.</small></div>
+        <button class="button secondary" type="button" data-action="force-update">Atualizar agora</button>
       </div>
       <div class="settings-row">
         <div><b>Dados locais</b><small>${items.length} compras, ${tasks.length} tarefas e ${logs.length} registos guardados neste dispositivo.</small></div>
@@ -861,6 +885,7 @@ function handleClick(event) {
     "toggle-local-notifications": toggleLocalNotifications,
     "test-notification": testLocalNotification,
     "copy-token": copyFcmToken,
+    "force-update": forceAppUpdate,
     "toggle-dark": toggleDarkMode,
     "clear-local": clearLocalData,
     "toggle-item": () => toggleItem(id),
@@ -879,31 +904,133 @@ function handleChange(event) {
   if (setting === "profileName") setProfileName(event.target.value);
 }
 
-function registerServiceWorker() {
-  getServiceWorkerRegistration().catch(error => {
-    console.warn("Service worker não registado.", error);
+let updateReloadStarted = false;
+
+function setupPwaAutoUpdate(registration) {
+  if (!("serviceWorker" in navigator) || !registration) return;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (updateReloadStarted) return;
+    updateReloadStarted = true;
+    showUpdateScreen("Atualização concluída", "A abrir a nova versão da app...");
+    setTimeout(() => window.location.reload(), 650);
   });
+
+  const activateWaitingWorker = () => {
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+  };
+
+  registration.addEventListener("updatefound", () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+
+    newWorker.addEventListener("statechange", () => {
+      if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+        showUpdateScreen("Nova versão encontrada", "A instalar a atualização automaticamente...");
+        newWorker.postMessage({ type: "SKIP_WAITING" });
+      }
+    });
+  });
+
+  activateWaitingWorker();
+
+  const checkForUpdate = () => registration.update().catch(error => {
+    console.warn("Não consegui procurar atualização da PWA.", error);
+  });
+
+  window.addEventListener("focus", checkForUpdate);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkForUpdate();
+  });
+  setInterval(checkForUpdate, 15 * 60 * 1000);
+}
+
+async function forceAppUpdate() {
+  if (!("serviceWorker" in navigator)) {
+    toast("Atualizações automáticas não são suportadas neste navegador.");
+    return;
+  }
+
+  try {
+    const registration = await getServiceWorkerRegistration();
+    await registration.update();
+
+    if (registration.waiting) {
+      showUpdateScreen("Nova versão encontrada", "A instalar a atualização agora...");
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+      return;
+    }
+
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(key => key.startsWith("ricardo-carol-pwa-")).map(key => caches.delete(key)));
+    }
+
+    showUpdateScreen("A atualizar a app", "A limpar cache antiga e a abrir a versão mais recente...");
+    setTimeout(() => window.location.reload(), 650);
+  } catch (error) {
+    console.warn("Atualização manual falhou.", error);
+    toast("Não consegui atualizar agora. Tenta fechar e abrir a app.");
+  }
+}
+
+function registerServiceWorker() {
+  getServiceWorkerRegistration()
+    .then(setupPwaAutoUpdate)
+    .catch(error => {
+      console.warn("Service worker não registado.", error);
+    });
 }
 
 
 function lockAppViewport() {
-  const setViewportHeight = () => {
-    document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+  const root = document.documentElement;
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const updateViewport = () => {
+    const visualHeight = window.visualViewport?.height || window.innerHeight;
+    root.style.setProperty("--app-height", `${Math.round(visualHeight)}px`);
+    root.classList.toggle("standalone", isStandaloneApp());
+    root.classList.toggle("ios", isiOS);
   };
 
-  setViewportHeight();
-  window.addEventListener("resize", setViewportHeight);
-  window.addEventListener("orientationchange", () => setTimeout(setViewportHeight, 250));
+  updateViewport();
+  window.addEventListener("resize", updateViewport);
+  window.addEventListener("orientationchange", () => setTimeout(updateViewport, 350));
+  window.visualViewport?.addEventListener("resize", updateViewport);
 
   document.addEventListener("gesturestart", event => event.preventDefault(), { passive: false });
+  document.addEventListener("gesturechange", event => event.preventDefault(), { passive: false });
+  document.addEventListener("gestureend", event => event.preventDefault(), { passive: false });
 
   let lastTouchEnd = 0;
   document.addEventListener("touchend", event => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
+    if (now - lastTouchEnd <= 300) event.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  let startY = 0;
+  document.addEventListener("touchstart", event => {
+    startY = event.touches?.[0]?.clientY || 0;
+  }, { passive: true });
+
+  document.addEventListener("touchmove", event => {
+    const scrollArea = event.target.closest?.(".main");
+    if (!scrollArea) {
+      event.preventDefault();
+      return;
+    }
+
+    const currentY = event.touches?.[0]?.clientY || 0;
+    const deltaY = currentY - startY;
+    const atTop = scrollArea.scrollTop <= 0;
+    const atBottom = Math.ceil(scrollArea.scrollTop + scrollArea.clientHeight) >= scrollArea.scrollHeight;
+
+    if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) {
       event.preventDefault();
     }
-    lastTouchEnd = now;
   }, { passive: false });
 }
 

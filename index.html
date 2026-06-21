@@ -2,16 +2,19 @@
 <html lang="pt-PT">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#536dfe">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no, date=no, email=no, address=no">
+  <meta name="apple-touch-fullscreen" content="yes">
   <meta name="description" content="Lista partilhada de compras e tarefas para Ricardo & Carol.">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Ricardo & Carol">
-  <link rel="manifest" href="manifest.json?v=6">
+  <link rel="manifest" href="manifest.json?v=10">
   <link rel="icon" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=10">
   <title>Ricardo & Carol</title>
 </head>
 <body>
@@ -57,6 +60,15 @@
   <nav class="mobile-nav" id="mobileNav" aria-label="Navegação principal"></nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="app.js?v=6"></script>
+  <div class="update-screen" id="updateScreen" aria-hidden="true" role="status" aria-live="polite">
+    <div class="update-card">
+      <img src="assets/icon-192.png" alt="">
+      <div class="update-spinner" aria-hidden="true"></div>
+      <h2 id="updateTitle">A atualizar a app</h2>
+      <p id="updateMessage">Estamos a instalar a nova versão. Mantém a app aberta só uns segundos.</p>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=10"></script>
 </body>
 </html>
